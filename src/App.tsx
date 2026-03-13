@@ -29,6 +29,8 @@ export default function App() {
   const [logs, setLogs] = useState<string[]>([]);
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cookies, setCookies] = useState(localStorage.getItem('palermo_cookies') || '');
+  const [showConfig, setShowConfig] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
 
   const addLog = (message: string) => {
@@ -57,7 +59,7 @@ export default function App() {
       const response = await fetch('/api/info', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, cookies }),
       });
 
       let data;
@@ -94,9 +96,74 @@ export default function App() {
   const videoFormats = videoInfo?.formats.filter(f => f.vcodec !== 'none' && f.acodec !== 'none') || [];
   const audioFormats = videoInfo?.formats.filter(f => f.vcodec === 'none' && f.acodec !== 'none') || [];
 
+  const saveCookies = (val: string) => {
+    setCookies(val);
+    localStorage.setItem('palermo_cookies', val);
+  };
+
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden">
       <div className="scanline"></div>
+
+      {/* Config Modal */}
+      <AnimatePresence>
+        {showConfig && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowConfig(false)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-surface border border-outline p-8 space-y-6 shadow-2xl"
+            >
+              <div className="flex justify-between items-center border-b border-outline pb-4">
+                <div className="flex items-center gap-3">
+                  <Settings className="text-primary" size={20} />
+                  <h2 className="text-xl font-bold tracking-widest uppercase">System_Configuration</h2>
+                </div>
+                <button onClick={() => setShowConfig(false)} className="text-outline hover:text-white transition-colors">
+                  [ CLOSE ]
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-secondary uppercase tracking-widest">Netscape Cookies (cookies.txt)</label>
+                  <p className="text-[10px] text-outline italic">
+                    Paste your Netscape format cookies here to bypass bot detection and age restrictions.
+                    Use a browser extension like "Get cookies.txt LOCALLY" to export them.
+                  </p>
+                  <textarea 
+                    value={cookies}
+                    onChange={(e) => saveCookies(e.target.value)}
+                    className="w-full h-64 bg-background border border-outline p-4 font-mono text-xs text-white/80 focus:border-primary focus:ring-0 resize-none"
+                    placeholder="# Netscape HTTP Cookie File..."
+                  />
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20">
+                  <AlertTriangle className="text-primary shrink-0" size={16} />
+                  <p className="text-[10px] text-primary/80 leading-relaxed uppercase tracking-wider">
+                    Warning: Cookies contain sensitive session data. They are stored locally in your browser and sent securely to the extraction core.
+                  </p>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setShowConfig(false)}
+                className="w-full py-4 bg-primary text-black font-bold uppercase tracking-widest hover:bg-white transition-colors"
+              >
+                [ SAVE_AND_APPLY ]
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Header */}
       <header className="border-b border-outline bg-background/80 backdrop-blur-md sticky top-0 z-50">
@@ -110,7 +177,10 @@ export default function App() {
               <Terminal size={14} />
               <span className="text-[10px] uppercase font-bold tracking-widest">CONSOLE</span>
             </button>
-            <button className="text-white hover:text-primary transition-colors flex items-center gap-2">
+            <button 
+              onClick={() => setShowConfig(true)}
+              className="text-white hover:text-primary transition-colors flex items-center gap-2"
+            >
               <Settings size={14} />
               <span className="text-[10px] uppercase font-bold tracking-widest">CONFIG</span>
             </button>

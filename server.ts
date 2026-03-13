@@ -42,24 +42,34 @@ async function startServer() {
   await downloadYtDlp();
 
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(cors());
   app.use(express.json());
 
   // API Route to get video info
   app.post("/api/info", async (req, res) => {
-    const { url } = req.body;
+    const { url, cookies } = req.body;
     if (!url) {
       return res.status(400).json({ error: "URL is required" });
     }
 
+    let cookieFile: string | null = null;
+
     try {
       console.log(`Fetching info for: ${url} using yt-dlp`);
-      // Use the downloaded yt-dlp binary with aggressive flags to bypass bot detection
-      // The 'tv' client is often the most successful at bypassing bot checks in cloud environments
+      
       const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
-      const command = `${YTDLP_PATH} --dump-single-json --no-check-certificates --user-agent "${userAgent}" --extractor-args "youtube:player_client=tv,android,ios" --no-cache-dir --force-ipv4 "${url}"`;
+      let command = `${YTDLP_PATH} --dump-single-json --no-check-certificates --user-agent "${userAgent}" --extractor-args "youtube:player_client=tv,android,ios" --no-cache-dir --force-ipv4`;
+
+      if (cookies && cookies.trim() !== "") {
+        cookieFile = path.join(process.cwd(), `cookies_${Date.now()}_${Math.floor(Math.random() * 1000)}.txt`);
+        fs.writeFileSync(cookieFile, cookies);
+        command += ` --cookies "${cookieFile}"`;
+        console.log("Using provided cookies for extraction");
+      }
+
+      command += ` "${url}"`;
       
       const { stdout, stderr } = await execPromise(command);
       
@@ -97,6 +107,15 @@ async function startServer() {
     } catch (error: any) {
       console.error("yt-dlp error:", error);
       res.status(500).json({ error: error.message || "Failed to fetch video info" });
+    } finally {
+      if (cookieFile && fs.existsSync(cookieFile)) {
+        try {
+          fs.unlinkSync(cookieFile);
+          console.log("Temporary cookie file deleted");
+        } catch (unlinkError) {
+          console.error("Error deleting temporary cookie file:", unlinkError);
+        }
+      }
     }
   });
 
