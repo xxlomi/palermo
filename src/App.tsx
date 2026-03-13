@@ -60,12 +60,19 @@ export default function App() {
         body: JSON.stringify({ url }),
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Failed to fetch video info");
+      let data;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(text || `Server returned ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to fetch video info");
+      }
+
       addLog("Extracting metadata...");
       setTimeout(() => addLog("Decoding stream map..."), 500);
       setTimeout(() => addLog("Almost there..."), 1000);

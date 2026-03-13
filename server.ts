@@ -61,7 +61,16 @@ async function startServer() {
       const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
       const command = `${YTDLP_PATH} --dump-single-json --no-check-certificates --user-agent "${userAgent}" --extractor-args "youtube:player_client=tv,android,ios" --no-cache-dir --force-ipv4 "${url}"`;
       
-      const { stdout } = await execPromise(command);
+      const { stdout, stderr } = await execPromise(command);
+      
+      if (stderr) {
+        console.warn("yt-dlp stderr:", stderr);
+      }
+
+      if (!stdout || stdout.trim() === "") {
+        throw new Error("yt-dlp returned empty output. The video might be restricted or the URL is invalid.");
+      }
+
       const info = JSON.parse(stdout);
       
       // Map yt-dlp info to the format expected by the frontend
