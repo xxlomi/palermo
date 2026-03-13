@@ -1,0 +1,5 @@
+{
+  "name": "Palermo",
+  "description": "A retro terminal-style video downloader powered by yt-dlp.",
+  "requestFramePermissions": []
+}
